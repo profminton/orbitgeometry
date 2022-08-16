@@ -60,15 +60,13 @@ class orbit_diagram:
       self.sample_fac = 10
       # The following are needed so that the sample points align with the orbit points properly
       Npts = Nframes * self.sample_fac + 1
-      timespan = self.Period + self.dt
-      useTrueAnomaly = False
 
       if (self.e == 1):
          sim2 = self.sim.copy()
          sim2.particles[1].vx *= 1.0000001
-         xyz = np.array(sim2.particles[1].sample_orbit(Npts=Npts,timespan=timespan,useTrueAnomaly=useTrueAnomaly)).T
+         xyz = np.array(sim2.particles[1].sample_orbit(Npts=Npts,samplingAngle="M",duplicateEndpoint=True)).T
       else:
-         xyz = np.array(self.sim.particles[1].sample_orbit(Npts=Npts,timespan=timespan,useTrueAnomaly=useTrueAnomaly)).T
+         xyz = np.array(self.sim.particles[1].sample_orbit(Npts=Npts,samplingAngle="M",duplicateEndpoint=True)).T
       self.xorb = xyz[0]
       self.yorb = xyz[1]
       # Sample point order is reversed from simulation points
