@@ -61,19 +61,24 @@ class orbit_diagram:
       # The following are needed so that the sample points align with the orbit points properly
       Npts = Nframes * self.sample_fac + 1
 
-      if (self.e == 1):
+      if self.e == 1:
          sim2 = self.sim.copy()
          sim2.particles[1].vx *= 1.0000001
          xyz = np.array(sim2.particles[1].sample_orbit(Npts=Npts,samplingAngle="M",duplicateEndpoint=True)).T
-      else:
+      elif self.e < 1:
          xyz = np.array(self.sim.particles[1].sample_orbit(Npts=Npts,samplingAngle="M",duplicateEndpoint=True)).T
+      else:
+         xyz = np.array(self.sim.particles[1].sample_orbit(Npts=Npts,samplingAngle="M")).T
       self.xorb = xyz[0]
       self.yorb = xyz[1]
       # Sample point order is reversed from simulation points
-      self.xorb = np.flip(self.xorb) 
+      self.xorb = np.flip(self.xorb)
       self.yorb = np.flip(self.yorb)
       # If the orbit is hyperbolic, create the empty orbit associated with the empty focus
       if self.e > 1.0:
+         isort = np.argsort(self.yorb)
+         self.xorb = self.xorb[isort]
+         self.yorb = self.yorb[isort]
          # Reflect each point in the orbit across the centerline
          lvec = np.array([0.0, 1.0]) # Unit reflection vector
          cpoint = np.array([self.fx * np.cos(self.omega), self.fx * np.sin(self.omega)]) # Reflection origin
@@ -91,22 +96,42 @@ class orbit_diagram:
                            'update_anim'  : ['orbit_path.set_data(self.xorb, self.yorb)']},
          'hyper_path'   : {'plotcommand'  : 'self.ax.plot(self.xhyp, self.yhyp, **self.hyper_path_args)[0]',
                            'update_anim'  : ['hyper_path.set_data(self.xhyp, self.yhyp)']},
-         'rline'        : {'plotcommand'  : 'self.ax.plot(self.rline_x, self.rline_y, **self.rline_args, animated=False)[0]',
+         'rline'        : {'plotcommand'  : 'self.ax_rot.plot(self.rline_x, self.rline_y, **self.rline_args, animated=False)[0]',
                            'update_anim'  : ['rline.set_data([self.rline_x, self.rline_y])']},
+         'r2line'       : {'plotcommand'  : 'self.ax_rot.plot(self.r2line_x, self.r2line_y, **self.r2line_args, animated=False)[0]',
+                           'update_anim'  : ['r2line.set_data([self.r2line_x, self.r2line_y])']},
          'rarrow'       : {'plotcommand'  : 'self.ax_rot.annotate("",xy=self.rarrowtip,xytext=self.rarrowend, **self.rarrow_args)',  
                            'update_anim'  : ['varrow.set_position(self.rarrowend)', 'rarrow.xy = self.rarrowtip']},
-         'varrow'       : {'plotcommand'  : 'self.ax.annotate("",xy=self.varrowtip,xytext=self.varrowend, **self.varrow_args)',  
+         'rlabel'       : {'plotcommand'  : 'self.ax_rot.annotate(self.rlabel_text,xy=(self.rlabel_x,self.rlabel_y), **self.rlabel_args)',
+                           'update_anim'  : ['rlabel.set_position([self.rlabel_x, self.rlabel_y])']},
+         'r2label'       : {'plotcommand'  : 'self.ax_rot.annotate(self.r2label_text,xy=(self.r2label_x,self.r2label_y), **self.r2label_args)',
+                           'update_anim'  : ['r2label.set_position([self.r2label_x, self.r2label_y])']},
+         'varrow'       : {'plotcommand'  : 'self.ax.annotate("",xy=self.varrowtip,xytext=self.varrowend, **self.varrow_args)',
                            'update_anim'  : ['varrow.set_position(self.varrowend)', 'varrow.xy = self.varrowtip']},
          'vlabel'       : {'plotcommand'  : 'self.ax_rot.annotate(self.vlabel_text,xy=(self.vlabel_x,self.vlabel_y), **self.vlabel_args)', 
                            'update_anim'  : ['vlabel.set_position([self.vlabel_x,self.vlabel_y])']},
-         'Xref_arrow'   : {'plotcommand'  : 'self.ax.annotate("",xy=self.Xref_arrowtip, xytext=self.Xref_arrowend, **self.ref_arrow_args)',  
+         'Xref_arrow'   : {'plotcommand'  : 'self.ax.annotate("",xy=self.Xref_arrowtip, xytext=self.Xref_arrowend, **self.ref_arrow_args)',
                            'update_anim'  : ['Xref_arrow.set_position(self.Xref_arrowend)', 'Xref_arrow.xy = self.Xref_arrowtip']},
-         'Xref_label'   : {'plotcommand'  : 'self.ax.annotate(self.Xref_label_text, xy=self.Xref_arrowtip, xytext=(self.Xref_label_x, self.Xref_label_y), **self.ref_label_args)', 
+         'Xref_label'   : {'plotcommand'  : 'self.ax.annotate(self.Xref_label_text, xy=self.Xref_arrowtip, xytext=(self.Xref_label_x, self.Xref_label_y), **self.ref_label_args)',
                            'update_anim'  : ['Xref_label.set_position(self.Xref_arrowtip)']},
-         'Yref_arrow'   : {'plotcommand'  : 'self.ax.annotate("",xy=self.Yref_arrowtip, xytext=self.Yref_arrowend, **self.ref_arrow_args)',  
+         'Yref_arrow'   : {'plotcommand'  : 'self.ax.annotate("",xy=self.Yref_arrowtip, xytext=self.Yref_arrowend, **self.ref_arrow_args)',
                            'update_anim'  : ['Yref_arrow.set_position(self.Yref_arrowend)', 'Yref_arrow.xy = self.Yref_arrowtip']},
-         'Yref_label'   : {'plotcommand'  : 'self.ax.annotate(self.Yref_label_text,xy=self.Yref_arrowtip, xytext=(self.Yref_label_x, self.Yref_label_y), **self.ref_label_args)', 
+         'Yref_label'   : {'plotcommand'  : 'self.ax.annotate(self.Yref_label_text,xy=self.Yref_arrowtip, xytext=(self.Yref_label_x, self.Yref_label_y), **self.ref_label_args)',
                            'update_anim'  : ['Yref_label.set_position(self.Yref_arrowtip)']},
+   
+         'Xcref_arrow': {
+            'plotcommand': 'self.ax_rot.annotate("",xy=self.Xref_arrowtip, xytext=self.Xref_arrowend, **self.ref_arrow_args)',
+            'update_anim': ['Xref_arrow.set_position(self.Xref_arrowend)', 'Xref_arrow.xy = self.Xref_arrowtip']},
+         'Xcref_label': {
+            'plotcommand': 'self.ax_rot.annotate(self.Xref_label_text, xy=self.Xref_arrowtip, xytext=(self.Xref_label_x, self.Xref_label_y), **self.ref_label_args)',
+            'update_anim': ['Xref_label.set_position(self.Xref_arrowtip)']},
+         'Ycref_arrow': {
+            'plotcommand': 'self.ax_rot.annotate("",xy=self.Yref_arrowtip, xytext=self.Yref_arrowend, **self.ref_arrow_args)',
+            'update_anim': ['Yref_arrow.set_position(self.Yref_arrowend)', 'Yref_arrow.xy = self.Yref_arrowtip']},
+         'Ycref_label': {
+            'plotcommand': 'self.ax_rot.annotate(self.Yref_label_text,xy=self.Yref_arrowtip, xytext=(self.Yref_label_x, self.Yref_label_y), **self.ref_label_args)',
+            'update_anim': ['Yref_label.set_position(self.Yref_arrowtip)']},
+         
          'focus1'       : {'plotcommand'  : 'self.ax_rot.scatter(self.F1[0], self.F1[1], **self.focus1_args)',
                            'update_anim'  : ['focus1.set_offsets([self.F1[0], self.F1[1]])']},
          'focus1_label' : {'plotcommand'  : 'self.ax_rot.annotate(self.focus1_label_text,xy=(self.F1[0], self.F1[1]), **self.focus1_label_args)', 
@@ -128,7 +153,7 @@ class orbit_diagram:
          'aline'        : {'plotcommand'  : 'self.ax_rot.plot(self.aline_x, self.aline_y, **self.aline_args)[0]',
                            'update_anim'  : ['bline.set_data(self.aline_x, self.aline_y)']},
          'alabel'       : {'plotcommand'  : 'self.ax_rot.annotate(self.alabel_text, xy=(self.alabel_x,self.alabel_y), **self.alabel_args)',
-                           'update_anim'  : ['blabel.set_position([self.alabel_x, self.alabel_y])']},
+                           'update_anim'  : ['alabel.set_position([self.alabel_x, self.alabel_y])']},
          'bline'        : {'plotcommand'  : 'self.ax_rot.plot(self.bline_x, self.bline_y, **self.bline_args)[0]',
                            'update_anim'  : ['bline.set_data(self.bline_x, self.bline_y)']},
          'blabel'       : {'plotcommand'  : 'self.ax_rot.annotate(self.blabel_text, xy=(self.blabel_x,self.blabel_y), **self.blabel_args)',
@@ -157,9 +182,7 @@ class orbit_diagram:
                            'update_anim'  : ['varpi_arrow.set_position(self.varpi_arrowend)', 'varpi_arrow.xy =  self.varpi_arrowtip']},
          'farrow'       : {'plotcommand'  : 'self.ax_rot.annotate("",xy=self.farrowtip,xytext=self.farrowend, **self.farrow_args)',
                            'update_anim'  : ['farrow.set_position(self.farrowend)', 'farrow.xy =  self.farrowtip']},
-         'rlabel'       : {'plotcommand'  : 'self.ax_rot.annotate(self.rlabel_text,xy=(self.rlabel_x,self.rlabel_y), **self.rlabel_args)',
-                           'update_anim'  : ['rlabel.set_position([self.rlabel_x, self.rlabel_y])']},
-         'philabel'     : {'plotcommand'  : 'self.ax_rot.annotate(self.philabel_text,xy=(self.philabel_x,self.philabel_y), **self.philabel_args)', 
+         'philabel'     : {'plotcommand'  : 'self.ax_rot.annotate(self.philabel_text,xy=(self.philabel_x,self.philabel_y), **self.philabel_args)',
                            'update_anim'  : ['philabel.set_position([self.philabel_x,self.philabel_y])', 'philabel.set_text(self.philabel_text)']},
          'phiarc'       : {'plotcommand'  : 'self.ax_rot.plot(self.phi_arc_x, self.phi_arc_y, **self.phiarc_args, animated=False)[0]',
                            'update_anim'  : ['phiarc.set_data(self.phi_arc_x, self.phi_arc_y)']},
@@ -175,6 +198,16 @@ class orbit_diagram:
                            'update_anim'  : ['psi_arc.set_data(self.psi_arc_x, self.psi_arc_y)']},
          'psi_arrow'    : {'plotcommand'  : 'self.ax_rot.annotate("",xy=self.psi_arrowtip,xytext=self.psi_arrowend, **self.psi_arrow_args)',
                            'update_anim'  : ['psi_arrow.set_position(self.psi_arrowend)', 'psi_arrow.xy =  self.psi_arrowtip']},
+         'theta_label'    : {'plotcommand'  : 'self.ax_rot.annotate(self.theta_label_text,xy=(self.theta_label_x,self.theta_label_y), **self.theta_label_args)', 
+                           'update_anim'  : ['theta_label.set_position([self.theta_label_x,self.theta_label_y])']},
+         'theta_arc'      : {'plotcommand'  : 'self.ax_rot.plot(self.theta_arc_x, self.theta_arc_y, **self.theta_arc_args, animated=False)[0]',
+                           'update_anim'  : ['theta_arc.set_data(self.theta_arc_x, self.theta_arc_y)']},
+         'theta_arrow'    : {'plotcommand'  : 'self.ax_rot.annotate("",xy=self.theta_arrowtip,xytext=self.theta_arrowend, **self.theta_arrow_args)',
+                           'update_anim'  : ['theta_arrow.set_position(self.theta_arrowend)', 'theta_arrow.xy =  self.theta_arrowtip']},
+         'rhatarrow'       : {'plotcommand'  : 'self.ax_rot.annotate("",xy=self.rhatarrowtip,xytext=self.rhatarrowend, **self.rhatarrow_args)',  
+                           'update_anim'  : ['varrow.set_position(self.rhatarrowend)', 'rhatarrow.xy = self.rhatarrowtip']},
+         'thetahatarrow'       : {'plotcommand'  : 'self.ax_rot.annotate("",xy=self.thetahatarrowtip,xytext=self.thetahatarrowend, **self.thetahatarrow_args)',  
+                           'update_anim'  : ['varrow.set_position(self.thetahatarrowend)', 'thetahatarrow.xy = self.thetahatarrowtip']},
       }
 
       # These are the lists of which artists are static and animated. Only artists in these lists will be plotted
@@ -188,7 +221,7 @@ class orbit_diagram:
       self.base_color = 'k'
       self.orbit_color = 'k'
       self.f_color = '#E06015'
-      self.a_color = 'k'
+      self.a_color = '#420077'
       self.b_color = '#377eb8'
       self.c_color = '#DF70AC'
       self.p_color = '#359B73'
@@ -197,6 +230,7 @@ class orbit_diagram:
       self.smallcirc = 50.0
       self.largecirc = self.smallcirc * 3
       self.textfont = fontsize
+      self.theta_color = 'tab:blue'
 
       # Each label has a text value and either a direct xy coordinate or a radial position (relative to focus) and angular offset 
       # (relative to true anomaly if it's animated, or just in polar coordinates otherwise). xy positions are computed 
@@ -250,6 +284,10 @@ class orbit_diagram:
       self.Xref_label_y = 12.0
       self.Yref_label_x = -12.0
       self.Yref_label_y = -6.0
+      self.ref_label_args['zorder'] = 10
+      self.ref_arrow_args['zorder'] = 10
+      
+      self.unit_arrow_length = np.abs(self.a * 0.3)
 
       self.orb_path_args = line_args.copy()
       self.orb_path_args['color'] = self.orbit_color
@@ -258,10 +296,11 @@ class orbit_diagram:
       self.hyper_path_args = self.orb_path_args.copy()
       self.hyper_path_args['linestyle'] = '--'
 
+      self.deg2rad = np.pi / 180.0
       # True anomaly arc (static)
       self.flabel_text = '$f$'
       self.f_arc_rad = 0.20 * self.a # Radius of the arc
-      self.flabel_ang_offset = 35.0 * np.pi / 180.0
+      self.flabel_ang_offset = 0.0
       self.flabel_rad_offset = self.f_arc_rad + 0.09 * self.a
       self.flabel_args = label_args.copy()
       self.flabel_args['color'] = self.f_color
@@ -413,7 +452,7 @@ class orbit_diagram:
       # Position point and label
       self.Plabel_text = '$P$'
       self.Plabel_args = label_args.copy()
-      self.Plabel_ang_offset = 4.0 * np.pi / 180.0 
+      self.Plabel_ang_offset = 4.0
       self.Plabel_rad_offset = 0.08 
       self.Ppoint_args = {
          'c'      : self.orbit_color, 
@@ -422,19 +461,38 @@ class orbit_diagram:
       }
 
       # Orbit radius (animated)
-      self.rlabel_text = '$r$'
+      self.rlabel_text = "$r$"
       self.rlabel_args = label_args.copy()
       self.rlabel_args['color'] = self.f_color
       self.rlabel_rad_offset = 0.7 * self.q
-      self.rlabel_ang_offset =  15.0 * np.pi / 180.0
+      self.rlabel_ang_offset =  15.0
       self.rline_args = line_args.copy()
       self.rline_args['color'] = self.f_color
+      
+      self.r2label_text = "$r'$"
+      self.r2label_args = self.rlabel_args.copy()
+      self.r2label_rad_offset = 0.7 * self.q
+      self.r2label_ang_offset =  15.0
+      self.r2line_args = self.rline_args.copy()
 
       self.rarrowprops = arrowprops.copy()
       self.rarrowprops['color'] = self.f_color
       self.rarrow_args = arrow_args.copy()
       self.rarrow_args['arrowprops'] = self.rarrowprops
       self.rarrow_args['color'] = self.f_color
+      
+      self.rhatarrowprops = arrowprops.copy()
+      self.rhatarrowprops['color'] = self.theta_color
+      self.rhatarrow_args = arrow_args.copy()
+      self.rhatarrow_args['arrowprops'] = self.rhatarrowprops
+      self.rhatarrow_args['color'] = self.theta_color 
+      
+      self.thetahatarrowprops = arrowprops.copy()
+      self.thetahatarrowprops['color'] = self.theta_color
+      self.thetahatarrow_args = arrow_args.copy()
+      self.thetahatarrow_args['arrowprops'] = self.thetahatarrowprops
+      self.thetahatarrow_args['color'] = self.theta_color 
+      
 
       # True anomaly arc (animated)
       self.farrowprops = arrowprops.copy()
@@ -454,6 +512,21 @@ class orbit_diagram:
       self.varpi_arrowprops = arrowprops.copy()
       self.varpi_arrow_args = arrow_args.copy()
       self.varpi_arrow_args['arrowprops'] = self.varpi_arrowprops
+      
+      # Polar angle at true anomaly arc 
+      self.theta_arrowprops = arrowprops.copy()
+      self.theta_arrowprops['color'] = self.theta_color
+      self.theta_arrow_args = arrow_args.copy()
+      self.theta_arrow_args['arrowprops'] = self.theta_arrowprops
+      self.theta_arrow_args['color'] = self.theta_color
+      self.theta_arc_args = line_args.copy()
+      self.theta_arc_args['color'] = self.theta_color 
+      self.theta_label_text = '$\\theta$'
+      self.theta_label_args = label_args.copy()
+      self.theta_label_args['color'] = self.theta_color
+      self.theta_arc_rad = 0.20 * self.a
+      self.theta_label_rad_offset = self.theta_arc_rad + 0.1
+      self.theta_label_ang_offset = 0.0
 
       # Hyperbolic deflection angle arc
       if self.e > 1.0:
@@ -479,7 +552,7 @@ class orbit_diagram:
       self.philabel_args = label_args.copy()
       self.philabel_args['color'] = self.phi_color
       self.phi_arc_rad = 0.10 # Radius of arc
-      self.philabel_ang_offset = 15.0 * np.pi / 180.0
+      self.philabel_ang_offset = 15.0
       self.philabel_rad_offset = self.phi_arc_rad + 0.2
       self.phiarc_args = line_args.copy()
       self.phiarc_args['color'] = self.phi_color
@@ -494,7 +567,7 @@ class orbit_diagram:
       self.vlabel_text = '$v$'
       self.vlabel_args = label_args.copy()
       self.vlabel_args['color'] = self.v_color
-      self.vlabel_ang_offset = 25.0 * np.pi / 180.0
+      self.vlabel_ang_offset = 25.0
       self.vlabel_rad_offset = self.phi_arc_rad
 
       # Arrange the various elements in zorder
@@ -503,7 +576,7 @@ class orbit_diagram:
       self.centerline_args['zorder'] = 11
       self.aline_args['zorder'] = 12
       self.pline_args['zorder'] = 12
-      self.focus2_args['zorder'] = 13
+      self.focus2_args['zorder'] = 150
       self.bline_args['zorder'] = 14
       self.cline_args['zorder'] = 14
       self.orb_path_args['zorder'] = 15
@@ -579,8 +652,8 @@ class orbit_diagram:
       """ Positions the annotations for a particular orbit snapshot. """
       self.i = i
       # Compute all animated quantities for snapshot i 
-      self.flabel_x = self.flabel_rad_offset * np.cos(self.flabel_ang_offset) + self.fx
-      self.flabel_y = self.flabel_rad_offset * np.sin(self.flabel_ang_offset)
+      self.flabel_x = self.flabel_rad_offset * np.cos(self.f[i]/2 + self.flabel_ang_offset * self.deg2rad) + self.fx
+      self.flabel_y = self.flabel_rad_offset * np.sin(self.f[i]/2 + self.flabel_ang_offset * self.deg2rad)
 
       self.Xref_arrowend = np.array([0.0, 0.0]) 
       self.Xref_arrowtip = np.array([self.ref_arrow_length, 0.0])
@@ -595,21 +668,39 @@ class orbit_diagram:
       self.V_y = self.vy[i]
 
       # Particle label position
-      Plabel_ang =  self.Plabel_ang_offset + self.f[i]
+      Plabel_ang =  self.Plabel_ang_offset * self.deg2rad + self.f[i]
       self.Plabel_x = self.x_rot[i] + self.Plabel_rad_offset * np.cos(Plabel_ang)
       self.Plabel_y = self.y_rot[i] + self.Plabel_rad_offset * np.sin(Plabel_ang)
 
       # r label and line position
-      rlabel_ang = self.f[i] + self.rlabel_ang_offset
-      self.rline_x = [0., self.P_x]
-      self.rline_y = [0., self.P_y]
+      rlabel_ang = self.f[i] + self.rlabel_ang_offset * self.deg2rad
+      self.rline_x = [self.F1[0], self.x_rot[i]]
+      self.rline_y = [self.F1[1], self.y_rot[i]]
+      
+      # r' label and line position (from empty focus)
+      self.r2line_x = [self.F2[0], self.x_rot[i]]
+      self.r2line_y = [self.F2[1], self.y_rot[i]]
+
       # The radius vector 
       self.rarrowend = (self.fx, 0.0)
       self.rarrowtip = (self.x_rot[i], self.y_rot[i])
-      rlabel_ang = np.arctan2(self.rarrowtip[1]-self.rarrowend[1], self.rarrowtip[0] - self.rarrowend[0]) + self.rlabel_ang_offset
-      self.rlabel_x = self.rlabel_rad_offset * np.cos(rlabel_ang) + self.fx
-      self.rlabel_y = self.rlabel_rad_offset * np.sin(rlabel_ang)
-
+      rlabel_ang = np.arctan2(self.rarrowtip[1]-self.rarrowend[1], self.rarrowtip[0] - self.rarrowend[0]) + self.rlabel_ang_offset * self.deg2rad
+      self.rlabel_x = self.rlabel_rad_offset * np.cos(rlabel_ang) + self.F1[0]
+      self.rlabel_y = self.rlabel_rad_offset * np.sin(rlabel_ang) + self.F1[1]
+      
+      r2label_ang = np.arctan2(self.r2line_y[1]-self.r2line_y[0], self.r2line_x[1] - self.r2line_x[0]) + self.r2label_ang_offset * self.deg2rad
+      self.r2label_x = self.r2label_rad_offset * np.cos(r2label_ang) + self.F2[0]
+      self.r2label_y = self.r2label_rad_offset * np.sin(r2label_ang) + self.F2[1]
+      
+      
+      # The radius unit vector 
+      self.rhatarrowend = (self.x_rot[i], self.y_rot[i])
+      self.rhatarrowtip = ( self.x_rot[i] + self.unit_arrow_length * (self.x_rot[i] - self.fx), (1 + self.unit_arrow_length) * self.y_rot[i])
+      #rhatlabel_ang = np.arctan2(self.rhatarrowtip[1]-self.rhatarrowend[1], self.rhatarrowtip[0] - self.rhatarrowend[0]) + self.rlabel_ang_offset * self.deg2rad
+      #self.rhatlabel_x = self.rhatlabel_rad_offset * np.cos(rhatlabel_ang) + self.F1[0]
+      #self.rhatlabel_y = self.rhatlabel_rad_offset * np.sin(rhatlabel_ang) + self.F1[1] 
+      
+      
       # True anomaly arc and arrowhead
       if self.e < 1.0: # Redfine true anomaly to always be positive for elliptical orbits
          f_arc_ang = self.f[i] if self.f[i] > 0.0 else 2 * np.pi + self.f[i]
@@ -622,6 +713,7 @@ class orbit_diagram:
       self.farrowend = (self.f_arc_x[-2], self.f_arc_y[-2])
       self.farrowtip = (self.f_arc_x[-1], self.f_arc_y[-1])
       #self.flabel_text = r'$f = {}$'.format(round(self.f[i] * 180.0 / np.pi, 1))
+     
 
       # Longitude of pericenter arc and arrowhead
       varpi_arc_ang = self.omega
@@ -633,6 +725,18 @@ class orbit_diagram:
       self.varpi_label_y = self.varpi_label_rad_offset * np.sin(-self.omega * 0.5)
       self.varpi_arrowend = (self.varpi_arc_x[-2], self.varpi_arc_y[-2])
       self.varpi_arrowtip = (self.varpi_arc_x[-1], self.varpi_arc_y[-1])
+      
+      
+      # Polar angle at true anomaly arc and arrowhead
+      theta_arc_ang = f_arc_ang 
+      theta_ang_arr = np.linspace(-varpi_arc_ang, theta_arc_ang)
+      theta_rad_arr = np.full_like(theta_ang_arr, self.theta_arc_rad)
+      self.theta_arc_x = theta_rad_arr * np.cos(theta_ang_arr) + self.fx
+      self.theta_arc_y = theta_rad_arr * np.sin(theta_ang_arr)
+      self.theta_arrowend = (self.theta_arc_x[-2], self.theta_arc_y[-2])
+      self.theta_arrowtip = (self.theta_arc_x[-1], self.theta_arc_y[-1]) 
+      self.theta_label_x = self.theta_label_rad_offset * np.cos(theta_arc_ang/2 + self.theta_label_ang_offset * self.deg2rad) + self.fx
+      self.theta_label_y = self.theta_label_rad_offset * np.sin(theta_arc_ang/2 + self.theta_label_ang_offset * self.deg2rad)   
 
       # Hyperbolic deflection angle arc
       if self.e > 1.0:
@@ -650,10 +754,10 @@ class orbit_diagram:
       self.phi = np.arccos(round(self.h / (self.r[i] * self.vmag[i]), 6)) 
       if 0.0 < self.f[i] < np.pi:
          phi_arc_ang = self.f[i] + np.pi/2 - self.phi 
-         philabel_rel_ang = self.f[i] + np.pi/2 - self.philabel_ang_offset 
+         philabel_rel_ang = self.f[i] + np.pi/2 - self.philabel_ang_offset * self.deg2rad
       else:
          phi_arc_ang = self.f[i] + np.pi/2 + self.phi 
-         philabel_rel_ang = self.f[i] + np.pi/2 + self.philabel_ang_offset 
+         philabel_rel_ang = self.f[i] + np.pi/2 + self.philabel_ang_offset  * self.deg2rad
 
       # The position of the flight path angle label
       self.philabel_x = self.philabel_rad_offset * np.cos(philabel_rel_ang) + self.x_rot[i]
@@ -679,9 +783,9 @@ class orbit_diagram:
       self.varrowend = (self.P_x, self.P_y)
       self.varrowtip = (self.P_x + self.V_x * self.v_length, self.P_y + self.V_y * self.v_length)
       if self.f[i] < np.pi:
-         vlabel_rel_ang = phi_arc_ang - self.vlabel_ang_offset 
+         vlabel_rel_ang = phi_arc_ang - self.vlabel_ang_offset * self.deg2rad
       else:
-         vlabel_rel_ang = phi_arc_ang + self.vlabel_ang_offset
+         vlabel_rel_ang = phi_arc_ang + self.vlabel_ang_offset * self.deg2rad
       self.vlabel_x = self.vlabel_rad_offset * np.cos(vlabel_rel_ang) + self.x_rot[i] 
       self.vlabel_y = self.vlabel_rad_offset * np.sin(vlabel_rel_ang) + self.y_rot[i] 
 
@@ -757,7 +861,6 @@ class orbit_diagram:
       for axisLoc in ['top', 'bottom', 'left', 'right']:
          ax.axis[axisLoc].set_visible(False)
       ax.patch.set_visible(False)
-      plt.tight_layout()
 
       return fig, ax, ax_rot
 
@@ -767,7 +870,7 @@ class orbit_diagram:
       fig, self.ax, self.ax_rot = self.make_rotated_fig(figx)
 
       self.update_plot(frame)
-      plt.tight_layout()
+      plt.figure()
       plt.show()
 
       return fig
@@ -780,7 +883,7 @@ class orbit_diagram:
          self.update_annotations(i)
          animated_artist_list = {key: exec_and_return(self.artists[key]['plotcommand'], self) for key in self.animated_list}
 
-      plt.tight_layout()
+      plt.figure()
       plt.show()
       return fig
 
@@ -812,7 +915,6 @@ class orbit_diagram:
       self.update_plot(0)
 
       init = partial(init_fig, orbit=self)
-      #update = partial(update_artists, animated_artists=self.animated_artists)
       step = partial(step_frames, orbit=self, Nframes=Nframes,pauseframes=pauseframes)
 
       anim = animation.FuncAnimation(
@@ -824,7 +926,7 @@ class orbit_diagram:
             blit=False,
             save_count=Nframes + pauseframes)
 
-      plt.tight_layout()
+      plt.figure()
       plt.show()
       return anim, fig
 
@@ -834,7 +936,7 @@ class orbit_diagram:
       self.Plabel_args['ha'] ='left'
       self.Plabel_args['rotation_mode'] = 'anchor' # Aligns text before rotating, otherwise it looks weird
       self.Plabel_rad_offset = 0.08
-      self.Plabel_ang_offset = -130 * np.pi / 180.0
+      self.Plabel_ang_offset = -130
 
       def sweeper(orbit, si, ns):
          """Generates a new filled polygon artist denoting a sweep area for the Kepler's 2nd law animation"""
@@ -884,8 +986,8 @@ class orbit_diagram:
             i = j if j < Nframes else Nframes - 1
 
             orbit.update_annotations(i) 
-            orbit.Plabel_x = Tlabel_rad_pos * (orbit.x_rot[i] - self.fx) + orbit.Plabel_rad_offset * np.cos(orbit.Plabel_ang_offset + orbit.f[i])  + self.fx
-            orbit.Plabel_y = Tlabel_rad_pos * orbit.y_rot[i] + orbit.Plabel_rad_offset * np.sin(orbit.Plabel_ang_offset + orbit.f[i])
+            orbit.Plabel_x = Tlabel_rad_pos * (orbit.x_rot[i] - self.fx) + orbit.Plabel_rad_offset * np.cos(orbit.Plabel_ang_offset * self.deg2rad + orbit.f[i])  + self.fx
+            orbit.Plabel_y = Tlabel_rad_pos * orbit.y_rot[i] + orbit.Plabel_rad_offset * np.sin(orbit.Plabel_ang_offset * self.deg2rad + orbit.f[i])
             orbit.Plabel_text = f'Time = {orbit.t[i]/orbit.Period:.2f}'
             orbit.Plabel_args['rotation'] = orbit.f[i] * 180.0 / np.pi + 180.0
             #orbit.Plabel_text = 'X'
@@ -913,8 +1015,8 @@ class orbit_diagram:
 
       # Generates the animation object and also returns the initial conditions as a figure object
       fig, self.ax, self.ax_rot = self.make_rotated_fig(figx)
-      self.Plabel_x = Tlabel_rad_pos * (self.x_rot[0] - self.fx) + self.Plabel_rad_offset * np.cos(self.Plabel_ang_offset + self.f[0]) + self.fx
-      self.Plabel_y = Tlabel_rad_pos * self.y_rot[0] + self.Plabel_rad_offset * np.sin(self.Plabel_ang_offset + self.f[0])
+      self.Plabel_x = Tlabel_rad_pos * (self.x_rot[0] - self.fx) + self.Plabel_rad_offset * np.cos(self.Plabel_ang_offset * self.deg2rad + self.f[0]) + self.fx
+      self.Plabel_y = Tlabel_rad_pos * self.y_rot[0] + self.Plabel_rad_offset * np.sin(self.Plabel_ang_offset * self.deg2rad + self.f[0])
       self.update_plot(0)
 
       self.sweep_artists = list(self.animated_artists) 
@@ -932,7 +1034,6 @@ class orbit_diagram:
             blit=False, 
             save_count=Nframes + pauseframes)
 
-      plt.tight_layout()
       plt.show()
       return anim, fig
 
@@ -1022,7 +1123,6 @@ class orbit_diagram_two_orbits(orbit_diagram):
             blit=False,
             save_count=Nframes + pauseframes)
 
-        plt.tight_layout()
         plt.show()
         return anim, fig
 
