@@ -870,7 +870,6 @@ class orbit_diagram:
       fig, self.ax, self.ax_rot = self.make_rotated_fig(figx)
 
       self.update_plot(frame)
-      plt.figure()
       plt.show()
 
       return fig
@@ -883,7 +882,6 @@ class orbit_diagram:
          self.update_annotations(i)
          animated_artist_list = {key: exec_and_return(self.artists[key]['plotcommand'], self) for key in self.animated_list}
 
-      plt.figure()
       plt.show()
       return fig
 
@@ -926,7 +924,6 @@ class orbit_diagram:
             blit=False,
             save_count=Nframes + pauseframes)
 
-      plt.figure()
       plt.show()
       return anim, fig
 
