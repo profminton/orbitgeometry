@@ -1,6 +1,7 @@
-
-__pycache__/
-
-orbitgeometry.egg-info/
-
-.idea/
+*
+!orbitgeometry/
+!orbitgeometry/__init__.py
+!orbitgeometry/orbitgeometry.py
+!.gitignore
+!pyproject.toml
+!README.md

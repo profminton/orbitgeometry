@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "orbitgeometry"
+version = "0.2.0"
+description = "A Python package for defining and visualizing two-body orbits."
+authors = [
+    { name = "David A. Minton", email = "your-email@example.com" }
+]
+readme = "README.md"
+requires-python = ">=3.7"
+dependencies = [
+    "numpy",
+    "matplotlib",
+    "shapely",
+    "swiftest",
+    "ipython",
+]
+
+[tool.setuptools.packages.find]
+where = ["orbitgeometry"]
+
+# [project.optional-dependencies]
+# testing = [
+#     "pytest",
+#     "pytest-cov",
+# ]
