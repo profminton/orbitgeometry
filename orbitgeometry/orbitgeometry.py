@@ -9,6 +9,7 @@ import swiftest
 from matplotlib.transforms import Affine2D
 import mpl_toolkits.axisartist.floating_axes as floating_axes
 from shapely.geometry import Polygon
+import tempfile
 
 class OrbitGeometry:
    """This is a class that defines a two-body orbit using swiftest, then sets the ideal locations for various annotations,
@@ -17,7 +18,13 @@ class OrbitGeometry:
    def __init__(self, a=1.0, e=0.0, f=0.0, omega=0.0, sim = None, Nframes=301, n=1, fontsize=20): 
       # Set up the orbit geometry from the initial conditions
       if sim is None:
-         self.sim = swiftest.Simulation(integrator='whm', dump_cadence=0, istep_out=1, verbose=False)
+         self.tmpdir=tempfile.TemporaryDirectory()
+         self.sim = swiftest.Simulation(simdir=self.tmpdir.name,
+                                        integrator='whm', 
+                                        dump_cadence=0, 
+                                        istep_out=1,
+                                        clean=True, 
+                                        verbose=False)
          self.a = a
          self.e = e
          self.omega = omega
@@ -616,14 +623,18 @@ class OrbitGeometry:
 
       return
 
+   def __del__(self):
+      if self.tmpdir:
+         self.tmpdir.cleanup()
+         
    def compute_n_orbits(self,Nframes=301, n=1):
       # Compute the orbital period from the initial conditions
       if self.e < 1.0:
          self.Period = 2 * np.pi * np.sqrt(self.a**3 / self.sim.GU)
-      elif e > 1.0:
+      elif self.e > 1.0:
          # Calculate time to pericenter passage and double it as a stand in for "period"
          F = 2 * np.arctanh(np.sqrt((self.e - 1.) / (self.e + 1.)) * np.tan(self.f / 2.)) 
-         tperi = -np.sqrt((-self.a)**3 / (self.sim.GU)) * (e * np.sinh(F) - F)
+         tperi = -np.sqrt((-self.a)**3 / (self.sim.GU)) * (self.e * np.sinh(F) - F)
          self.Period = 2 * tperi
       else: # Barker's equation for the parabolic trajectory
          D = np.tan(self.f / 2)
@@ -631,9 +642,9 @@ class OrbitGeometry:
          self.Period = 2 * tperi
          
       # Integrate the orbit for n periods
-      tstop = self.Period * n
-      self.dt = tstop / Nframes
-      self.sim.run(tstop=tstop, dt=self.dt, istep_out=1, dump_cadence=0, integrator='whm', verbose=False)
+      self.tstop = self.Period * n
+      self.dt = self.tstop / Nframes
+      self.sim.run(tstop=self.tstop, dt=self.dt)
       self.t = self.sim.data.time.values
       orbit = self.sim.data.isel(name=1)
       self.f = orbit.f.values 
@@ -853,8 +864,8 @@ class OrbitGeometry:
 
       #ax.set_xlim([xmin_rot, xmax_rot])
       #ax.set_ylim([ymin_rot, ymax_rot])
-      ax.set_aspect('equal')
-      ax_rot.set_aspect('equal')
+      ax.set_aspect('equal','box')
+      ax_rot.set_aspect('equal','box')
 
       # Remove tick labels 
       ax.set_yticklabels([])
@@ -1131,10 +1142,39 @@ class OrbitGeometry2Orbits(OrbitGeometry):
         plt.show()
         return anim, fig
 
+def make_diagram(figsize, rmax=10):
+    fig = plt.figure(1, figsize=figsize)
+    ax = fig.add_subplot(111)
+    ax.set_aspect('equal')
+    plt.axis('off')
+
+    # Remove tick labels 
+    ax.set_yticklabels([])
+    ax.set_xticklabels([])
+    ax.grid(False)
+    ax.patch.set_visible(False)
+
+    # Remove tick labels of reference frame
+    ax.get_xaxis().set_visible(False) 
+    ax.get_yaxis().set_visible(False)
+    ax.patch.set_visible(False)
+    
+    # Set range
+    rval = max(figsize)
+    xval = rmax * figsize[0] / rval
+    yval = rmax * figsize[1] / rval
+    ax.set_xlim(-xval,xval)
+    ax.set_ylim(-yval,yval)
+
+    return fig, ax
+
+
 if __name__ == '__main__':
    from matplotlib import rc
    from IPython.display import HTML
    import swiftest
+   from matplotlib import rc 
+   
 
    # Default output of animation will be a javascript applet
    rc('animation', html='jshtml')
@@ -1142,27 +1182,105 @@ if __name__ == '__main__':
    # Make the LaTeX math look like LaTeX
    rc('text', usetex=True)
    rc('text.latex', preamble=r'\usepackage{amsmath}')
+   
+   figwidth = 10
+   Nframes = 3600 
 
-   # Basic plot element values
-   # Orbit initial conditions
-   a = -1.
-   e = 1.3
-   f = 0.0001 
-   omega = 0.0 
+   # elliptical = OrbitGeometry(a=1.0, e=0.6, Nframes=Nframes, fontsize=32)
 
-   figx = 8.0
-   Nframes = 301
-   pauseframes = 100
-   orbit = OrbitGeometry(a=a,e=e,f=f,omega=omega, Nframes=Nframes)
-   orbit.static_list = [
-      'focus1',      
+   # elliptical.static_list = [    
+   #    'Xcref_arrow',
+   #    'Ycref_arrow',
+   #    'Xcref_label',
+   #    'Ycref_label',
+   #    'focus1', 
+   #    'focus1_label', 
+   #    'focus2',
+   #    'focus2_label',
+   #    'orbit_path',
+   #    'rline',
+   #    'rlabel',
+   #    'r2line',
+   #    'r2label',
+   #    'aline',
+   #    'alabel',
+   #    'Plabel',
+   # ]
+
+   # elliptical.rlabel_rad_offset = 0.75
+   # elliptical.rlabel_ang_offset = 5 
+   # elliptical.ref_arrow_length *= 1.4
+
+   # fig = elliptical.plot(frame=1200,figx=figwidth)
+   # fig.savefig("ellipse_diagram_01.png", dpi=150)
+
+   hyperbolic = OrbitGeometry(a=-1, e=1.3, f=-130.0, omega=30.0, Nframes=Nframes, fontsize=24)
+
+   hyperbolic.static_list = [
+      'Xref_arrow',
+      'Yref_arrow',
+      'Xref_label',
+      'Yref_label',
+      'focus1', 
+      'focus1_label', 
+      'focus2',
+      'focus2_label',
       'orbit_path',
+      'hyper_path',
+      'alabel',
+      'aline',
+      'bline',
+      'blabel',
+      'cline',
+      'clabel',
+      'pline',
+      'plabel',
+      'centerline',
+      'varpi_arc',
+      'varpi_arrow',
+      'varpi_label', 
+      'peri_point',
+      'peri_label',
+      'asymptote1',
+      'asymptote2',
+      'psi_arc',
+      'psi_arrow',
+      'psi_label',
+      'impactline',
+      'impactlabel',
    ]
-   orbit.animated_list = [
+   hyperbolic.animated_list = [
       'Ppoint',
-      'Plabel',
-      'rline',
+      'farc',
+      'farrow',
+      'flabel',
+      'rlabel',
+      'rarrow',
+      'philabel',
+      'phiarc',
+      'varrow',
+      'vlabel',
+      'hline',
    ]
-   anim, fig = orbit.make_sweep_anim(Nframes, pauseframes, figx, nsweep=75)
-   extent = orbit.ax.get_window_extent().transformed(fig.dpi_scale_trans.inverted())
-   fig.savefig("elliptical.png", bbox_inches=extent, dpi=150, facecolor='white', transparent=False)
+   hyperbolic.Yref_label_x = 15.0
+   hyperbolic.Yref_label_y +=10.0
+   hyperbolic.Xref_label_x += 10.0
+   hyperbolic.ref_arrow_length *= 2
+   hyperbolic.varpi_arc_rad = 1.0
+   hyperbolic.varpi_label_rad_offset = 1.3
+   hyperbolic.psi_label_rad_offset *= 0.7
+   hyperbolic.clabel_y += 0.2
+   hyperbolic.clabel_x -= 0.1
+   hyperbolic.blabel_y -= 0.2
+   hyperbolic.blabel_x -= 0.1
+   hyperbolic.alabel_y -= 0.05
+   hyperbolic.plabel_y += 0.1
+   hyperbolic.plabel_x += 0.1
+   hyperbolic.rlabel_rad_offset = 5 * hyperbolic.q
+   hyperbolic.rlabel_ang_offset = 10
+   hyperbolic.f_arc_rad = 0.5
+   hyperbolic.flabel_rad_offset = 0.75
+   hyperbolic.vlabel_rad_offset *= 4
+   hyperbolic.vlabel_ang_offset = 30 
+   hyperbolic.impactlabel_y -= 0.2
+   hyperbolic.focus2_label_args['xytext'] = (24,-6)
