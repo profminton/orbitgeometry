@@ -634,8 +634,8 @@ class OrbitGeometry:
       elif self.e > 1.0:
          # Calculate time to pericenter passage and double it as a stand in for "period"
          F = 2 * np.arctanh(np.sqrt((self.e - 1.) / (self.e + 1.)) * np.tan(self.f / 2.)) 
-         tperi = -np.sqrt((-self.a)**3 / (self.sim.GU)) * (self.e * np.sinh(F) - F)
-         self.Period = 2 * tperi
+         tperi = -np.sqrt((np.abs(self.a))**3 / (self.sim.GU)) * (self.e * np.sinh(F) - F)
+         self.Period = 2 * np.abs(tperi)
       else: # Barker's equation for the parabolic trajectory
          D = np.tan(self.f / 2)
          tperi = -0.5 * np.sqrt((self.h**2 / self.sim.GU)**3 / self.sim.GU) * (D + (1. / 3.) * D**3)
@@ -657,8 +657,8 @@ class OrbitGeometry:
       self.vmag = orbit.vh.magnitude().values
       if self.e < 0.99999999:
          self.E = orbit.cape.values
-      elif orbit.e > 1.0:
-         self.F = orbit.capf.values
+      elif self.e > 1.0:
+         self.F = orbit.cape.values
       self.x_rot = self.r * np.cos(np.deg2rad(self.f)) + self.fx
       self.y_rot = self.r * np.sin(np.deg2rad(self.f))
       return
@@ -1058,7 +1058,7 @@ def exec_and_return(exec_str, self):
    exec('temp = ' + exec_str, {'self' : self}, loc)
    return loc['temp']
 
-# Make a new child class of the original OrbitDiagram class, but override the plotting and animation methods to allow for the secondary orbit object
+# Make a new child class of the original OrbitGeometry class, but override the plotting and animation methods to allow for the secondary orbit object
 class OrbitGeometry2Orbits(OrbitGeometry):
     def __init__(self, orbit2, sim, Nframes): 
         super().__init__(sim, Nframes)
@@ -1214,7 +1214,9 @@ if __name__ == '__main__':
    # fig = elliptical.plot(frame=1200,figx=figwidth)
    # fig.savefig("ellipse_diagram_01.png", dpi=150)
 
-   hyperbolic = OrbitGeometry(a=-1, e=1.3, f=-130.0, omega=30.0, Nframes=Nframes, fontsize=24)
+   hyperbolic = OrbitGeometry(a=1.0,e=1.3,f=-130.0,omega=30.0, Nframes=Nframes, fontsize=24)
+
+
 
    hyperbolic.static_list = [
       'Xref_arrow',
