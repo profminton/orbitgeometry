@@ -5,3 +5,11 @@
 !.gitignore
 !pyproject.toml
 !README.md
+!examples/
+!examples/.gitattributes
+!examples/conic_section_diagrams_animated.ipynb
+!examples/kepler.ipynb
+!examples/notebook2md.sh
+!examples/notebook2html.sh
+!examples/media/
+!examples/media/.gitignore

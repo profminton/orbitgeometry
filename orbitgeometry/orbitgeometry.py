@@ -15,7 +15,7 @@ class OrbitGeometry:
    """This is a class that defines a two-body orbit using swiftest, then sets the ideal locations for various annotations,
       such as arrows, labels, and points, that can then be plotted as a static figure or animation.
    """
-   def __init__(self, a=1.0, e=0.0, f=0.0, omega=0.0, sim = None, Nframes=301, n=1, fontsize=20): 
+   def __init__(self, a=1.0, e=0.0, M=0.0, omega=0.0, sim = None, Nframes=301, n=1, fontsize=20): 
       # Set up the orbit geometry from the initial conditions
       if sim is None:
          self.tmpdir=tempfile.TemporaryDirectory()
@@ -28,9 +28,9 @@ class OrbitGeometry:
          self.a = a
          self.e = e
          self.omega = omega
-         self.f = f
-         self.sim.add_solar_system_body("Sun")
-         self.sim.add_body(a=a,e=e,f=f,omega=omega)            
+         self.M = M
+         self.sim.add_body(name="CB", Gmass=1.0, radius=0.005, rh=[0.0, 0.0, 0.0], vh=[0.0, 0.0, 0.0])
+         self.sim.add_body(a=a,e=e,capm=M,omega=omega)            
          ic = self.sim.data.isel(time=0,name=1)
          self.rh = ic.rh.values
          self.vh = ic.vh.values
@@ -42,18 +42,23 @@ class OrbitGeometry:
          self.a = ic.a.values[()]
          self.e = ic.e.values[()]
          self.omega = ic.omega.values[()]
-         self.f = ic.f.values[()]
+         self.M = ic.capm.values[()]
       else:
          raise ValueError("sim must be an instance of swiftest.Simulation")
 
+      self.mu = self.sim.data.isel(time=0,name=0).Gmass.values[()]
+      self.f = ic.f.values[()]
       self.h = self.rh[0] * self.vh[1] - self.rh[1] * self.vh[0]
       if self.e < 1.0:
          self.b = self.a * np.sqrt(1. - self.e**2) # Semiminor axis of an ellipse
          self.p = self.a * (1. - self.e**2) # Semilatus rectum for an ellipse
+         self.E = ic.cape.values[()]
       elif self.e > 1.0:
+         self.a = -np.abs(self.a)
          self.b = -self.a * np.sqrt(self.e**2 - 1.) # Semiminor axis of a hyperbola
          self.p = self.a * (self.e**2 - 1.) # Semilatus rectum for a hyperbola
          self.psi = 2 * np.arcsin(1.0/self.e) # Hyperbolic deflection angle
+         self.F = ic.capf.values[()]
       else: # Parabolic trajectory
          self.p = self.h**2 / sim.G
          self.a = self.p / 2
@@ -199,6 +204,12 @@ class OrbitGeometry:
                            'update_anim'  : ['varpi_arrow.set_position(self.varpi_arrowend)', 'varpi_arrow.xy =  self.varpi_arrowtip']},
          'farrow'       : {'plotcommand'  : 'self.ax_rot.annotate("",xy=self.farrowtip,xytext=self.farrowend, **self.farrow_args)',
                            'update_anim'  : ['farrow.set_position(self.farrowend)', 'farrow.xy =  self.farrowtip']},
+         'Elabel'       : {'plotcommand'  : 'self.ax_rot.annotate(self.Elabel_text,xy=(self.Elabel_x,self.Elabel_y), **self.Elabel_args)', 
+                           'update_anim'  : ['Elabel.set_position([self.Elabel_x, self.Elabel_y])', 'Elabel.set_text(self.Elabel_text)']},
+         'Earc'         : {'plotcommand'  : 'self.ax_rot.plot(self.E_arc_x, self.E_arc_y, **self.Earc_args, animated=False)[0]',
+                           'update_anim'  : ['farc.set_data(self.E_arc_x, self.E_arc_y)']},    
+         'Eline'        : {'plotcommand'  : 'self.ax_rot.plot(self.Eline_x, self.Eline_y, **self.Eline_args, animated=False)[0]',
+                           'update_anim'  : ['Eline.set_data([self.Eline_x, self.Eline_y])']},            
          'philabel'     : {'plotcommand'  : 'self.ax_rot.annotate(self.philabel_text,xy=(self.philabel_x,self.philabel_y), **self.philabel_args)',
                            'update_anim'  : ['philabel.set_position([self.philabel_x,self.philabel_y])', 'philabel.set_text(self.philabel_text)']},
          'phiarc'       : {'plotcommand'  : 'self.ax_rot.plot(self.phi_arc_x, self.phi_arc_y, **self.phiarc_args, animated=False)[0]',
@@ -221,11 +232,11 @@ class OrbitGeometry:
                            'update_anim'  : ['theta_arc.set_data(self.theta_arc_x, self.theta_arc_y)']},
          'theta_arrow'    : {'plotcommand'  : 'self.ax_rot.annotate("",xy=self.theta_arrowtip,xytext=self.theta_arrowend, **self.theta_arrow_args)',
                            'update_anim'  : ['theta_arrow.set_position(self.theta_arrowend)', 'theta_arrow.xy =  self.theta_arrowtip']},
-         'thetahat_arrow'       : {'plotcommand'  : 'self.ax_rot.annotate("",xy=self.thetahat_arrowtip,xytext=self.thetahat_arrowend, **self.thetahat_arrow_args)',  
+         'thetahat_arrow' : {'plotcommand'  : 'self.ax_rot.annotate("",xy=self.thetahat_arrowtip,xytext=self.thetahat_arrowend, **self.thetahat_arrow_args)',  
                            'update_anim'  : ['varrow.set_position(self.thetahat_arrowend)', 'thetahat_arrow.xy = self.thetahat_arrowtip']},
-         'thetahat_label'     : {'plotcommand'  : 'self.ax_rot.annotate(self.thetahat_label_text,xy=(self.thetahat_label_x,self.thetahat_label_y), **self.thetahat_label_args)',
+         'thetahat_label' : {'plotcommand'  : 'self.ax_rot.annotate(self.thetahat_label_text,xy=(self.thetahat_label_x,self.thetahat_label_y), **self.thetahat_label_args)',
                            'update_anim'  : ['thetahat_label.set_position([self.thetahat_label_x,self.thetahat_label_y])', 'thetahat_label.set_text(self.thetahat_label_text)']},
-         'rhat_arrow'       : {'plotcommand'  : 'self.ax_rot.annotate("",xy=self.rhat_arrowtip,xytext=self.rhat_arrowend, **self.rhat_arrow_args)',  
+         'rhat_arrow'     : {'plotcommand'  : 'self.ax_rot.annotate("",xy=self.rhat_arrowtip,xytext=self.rhat_arrowend, **self.rhat_arrow_args)',  
                            'update_anim'  : ['varrow.set_position(self.rhat_arrowend)', 'rhat_arrow.xy = self.rhat_arrowtip']},
          'rhat_label'     : {'plotcommand'  : 'self.ax_rot.annotate(self.rhat_label_text,xy=(self.rhat_label_x,self.rhat_label_y), **self.rhat_label_args)',
                            'update_anim'  : ['rhat_label.set_position([self.rhat_label_x,self.rhat_label_y])', 'rhat_label.set_text(self.rhat_label_text)']},
@@ -355,17 +366,23 @@ class OrbitGeometry:
       self.blabel_args['color'] = self.b_color
 
       # Impact parameter line
+      self.impactline_args = line_args.copy()
+      self.impactlabel_args = label_args.copy()
       if self.e > 1.0:
          # Semiminor axis label and line
          self.impactline_x = [self.F1[0], self.F1[0] + self.b * np.sin(np.pi/2+self.psi/2)]
          self.impactline_y = [self.F1[1], self.F1[1] + self.b * np.cos(np.pi/2+self.psi/2)]
-         self.impactline_args = line_args.copy()
          self.impactline_args['color'] = self.b_color
          self.impactlabel_text = '$b$'
          self.impactlabel_x = self.impactline_x[0] + 0.5 * (self.impactline_x[1] - self.impactline_x[0]) - 0.02
          self.impactlabel_y = self.impactline_y[0] + 0.5 * (self.impactline_y[1] - self.impactline_y[0]) - 0.12
-         self.impactlabel_args = label_args.copy()
          self.impactlabel_args['color'] = self.b_color
+      else:
+         self.impactline_x = [0., 0.]
+         self.impactline_y = [0., 0.]
+         self.impactlabel_text = ''
+         self.impactlabel_x = 0.0
+         self.impactlabel_y = 0.0
 
       # Focus-to-center label
       if self.e < 1.0:
@@ -560,15 +577,19 @@ class OrbitGeometry:
       self.rhat_label_ang_offset = 20
 
       # Hyperbolic deflection angle arc
+      self.psi_arc_args = line_args.copy()
+      self.psi_label_args = label_args.copy()
+      self.psi_arrowprops = arrowprops.copy()
+      self.psi_arrow_args = arrow_args.copy()
+      self.psi_arrow_args['arrowprops'] = self.psi_arrowprops
       if self.e > 1.0:
-         self.psi_arc_args = line_args.copy()
          self.psi_label_text = r'$\psi$'
-         self.psi_label_args = label_args.copy()
          self.psi_arc_rad = 1.00 # Radius of the arc
          self.psi_label_rad_offset = self.psi_arc_rad + 0.1
-         self.psi_arrowprops = arrowprops.copy()
-         self.psi_arrow_args = arrow_args.copy()
-         self.psi_arrow_args['arrowprops'] = self.psi_arrowprops
+      else:
+         self.psi_label_text = ""
+         self.psi_arc_rad = 0.0
+         self.psi_label_rad_offset = 0.0
 
       # Velocity vector (animated)
       self.v_length = 0.05 # Length of arrow as fraction of velocity
@@ -630,15 +651,14 @@ class OrbitGeometry:
    def compute_n_orbits(self,Nframes=301, n=1):
       # Compute the orbital period from the initial conditions
       if self.e < 1.0:
-         self.Period = 2 * np.pi * np.sqrt(self.a**3 / self.sim.GU)
+         self.Period = 2 * np.pi * np.sqrt(self.a**3 / self.mu)
       elif self.e > 1.0:
          # Calculate time to pericenter passage and double it as a stand in for "period"
-         F = 2 * np.arctanh(np.sqrt((self.e - 1.) / (self.e + 1.)) * np.tan(self.f / 2.)) 
-         tperi = -np.sqrt((np.abs(self.a))**3 / (self.sim.GU)) * (self.e * np.sinh(F) - F)
+         tperi = -np.sqrt((np.abs(self.a))**3 / (self.mu)) * (self.e * np.sinh(self.F) - self.F)
          self.Period = 2 * np.abs(tperi)
       else: # Barker's equation for the parabolic trajectory
-         D = np.tan(self.f / 2)
-         tperi = -0.5 * np.sqrt((self.h**2 / self.sim.GU)**3 / self.sim.GU) * (D + (1. / 3.) * D**3)
+         D = np.tan(np.deg2rad(self.f / 2))
+         tperi = -0.5 * np.sqrt((self.h**2 / self.mu)**3 / self.mu) * (D + (1. / 3.) * D**3)
          self.Period = 2 * tperi
          
       # Integrate the orbit for n periods
@@ -658,7 +678,8 @@ class OrbitGeometry:
       if self.e < 0.99999999:
          self.E = orbit.cape.values
       elif self.e > 1.0:
-         self.F = orbit.cape.values
+         self.F = orbit.capf.values
+         self.f = 360.0 - self.f
       self.x_rot = self.r * np.cos(np.deg2rad(self.f)) + self.fx
       self.y_rot = self.r * np.sin(np.deg2rad(self.f))
       return
@@ -1186,103 +1207,91 @@ if __name__ == '__main__':
    figwidth = 10
    Nframes = 3600 
 
-   # elliptical = OrbitGeometry(a=1.0, e=0.6, Nframes=Nframes, fontsize=32)
+   elliptical = OrbitGeometry(a=1.0, e=0.6, Nframes=Nframes, fontsize=32)
 
-   # elliptical.static_list = [    
-   #    'Xcref_arrow',
-   #    'Ycref_arrow',
-   #    'Xcref_label',
-   #    'Ycref_label',
-   #    'focus1', 
-   #    'focus1_label', 
-   #    'focus2',
-   #    'focus2_label',
-   #    'orbit_path',
-   #    'rline',
-   #    'rlabel',
-   #    'r2line',
-   #    'r2label',
-   #    'aline',
-   #    'alabel',
-   #    'Plabel',
-   # ]
-
-   # elliptical.rlabel_rad_offset = 0.75
-   # elliptical.rlabel_ang_offset = 5 
-   # elliptical.ref_arrow_length *= 1.4
-
-   # fig = elliptical.plot(frame=1200,figx=figwidth)
-   # fig.savefig("ellipse_diagram_01.png", dpi=150)
-
-   hyperbolic = OrbitGeometry(a=1.0,e=1.3,f=-130.0,omega=30.0, Nframes=Nframes, fontsize=24)
-
-
-
-   hyperbolic.static_list = [
-      'Xref_arrow',
-      'Yref_arrow',
-      'Xref_label',
-      'Yref_label',
+   elliptical.static_list = [    
+      'Xcref_arrow',
+      'Ycref_arrow',
+      'Xcref_label',
+      'Ycref_label',
       'focus1', 
       'focus1_label', 
       'focus2',
       'focus2_label',
       'orbit_path',
-      'hyper_path',
-      'alabel',
-      'aline',
-      'bline',
-      'blabel',
-      'cline',
-      'clabel',
-      'pline',
-      'plabel',
-      'centerline',
-      'varpi_arc',
-      'varpi_arrow',
-      'varpi_label', 
-      'peri_point',
-      'peri_label',
-      'asymptote1',
-      'asymptote2',
-      'psi_arc',
-      'psi_arrow',
-      'psi_label',
-      'impactline',
-      'impactlabel',
-   ]
-   hyperbolic.animated_list = [
-      'Ppoint',
-      'farc',
-      'farrow',
-      'flabel',
+      'rline',
       'rlabel',
-      'rarrow',
-      'philabel',
-      'phiarc',
-      'varrow',
-      'vlabel',
-      'hline',
+      'r2line',
+      'r2label',
+      'aline',
+      'alabel',
+      'Plabel',
    ]
-   hyperbolic.Yref_label_x = 15.0
-   hyperbolic.Yref_label_y +=10.0
-   hyperbolic.Xref_label_x += 10.0
-   hyperbolic.ref_arrow_length *= 2
-   hyperbolic.varpi_arc_rad = 1.0
-   hyperbolic.varpi_label_rad_offset = 1.3
-   hyperbolic.psi_label_rad_offset *= 0.7
-   hyperbolic.clabel_y += 0.2
-   hyperbolic.clabel_x -= 0.1
-   hyperbolic.blabel_y -= 0.2
-   hyperbolic.blabel_x -= 0.1
-   hyperbolic.alabel_y -= 0.05
-   hyperbolic.plabel_y += 0.1
-   hyperbolic.plabel_x += 0.1
-   hyperbolic.rlabel_rad_offset = 5 * hyperbolic.q
-   hyperbolic.rlabel_ang_offset = 10
-   hyperbolic.f_arc_rad = 0.5
-   hyperbolic.flabel_rad_offset = 0.75
-   hyperbolic.vlabel_rad_offset *= 4
-   hyperbolic.vlabel_ang_offset = 30 
-   hyperbolic.impactlabel_y -= 0.2
-   hyperbolic.focus2_label_args['xytext'] = (24,-6)
+
+   elliptical.rlabel_rad_offset = 0.75
+   elliptical.rlabel_ang_offset = 5 
+   elliptical.ref_arrow_length *= 1.4
+
+   fig = elliptical.plot(frame=1200,figx=figwidth)
+   fig.savefig("ellipse_diagram_01.png", dpi=150)
+
+   # hyperbolic = OrbitGeometry(a=-1.0,e=1.3,M=-130.0,omega=30.0, Nframes=Nframes, fontsize=24)
+
+
+
+   # hyperbolic.static_list = [
+   #    'Xref_arrow',
+   #    'Yref_arrow',
+   #    'Xref_label',
+   #    'Yref_label',
+   #    'focus1', 
+   #    'focus1_label', 
+   #    'focus2',
+   #    'focus2_label',
+   #    'orbit_path',
+   #    'hyper_path',
+   #    'cline',
+   #    'clabel',
+   #    'centerline',
+   #    'asymptote1',
+   #    'asymptote2',
+   # ]   
+   # hyperbolic.animated_list = [
+   #    'Ppoint',
+   #    'farc',
+   #    'farrow',
+   #    'flabel',
+   #    'rlabel',
+   #    'rarrow',
+   #    'philabel',
+   #    'phiarc',
+   #    'varrow',
+   #    'vlabel',
+   #    'hline',
+   # ]
+   # hyperbolic.Yref_label_x = 15.0
+   # hyperbolic.Yref_label_y +=10.0
+   # hyperbolic.Xref_label_x += 10.0
+   # hyperbolic.ref_arrow_length *= 2
+   # hyperbolic.varpi_arc_rad = 1.0
+   # hyperbolic.varpi_label_rad_offset = 1.3
+   # hyperbolic.psi_label_rad_offset *= 0.7
+   # hyperbolic.clabel_y += 0.2
+   # hyperbolic.clabel_x -= 0.1
+   # hyperbolic.blabel_y -= 0.2
+   # hyperbolic.blabel_x -= 0.1
+   # hyperbolic.alabel_y -= 0.05
+   # hyperbolic.plabel_y += 0.1
+   # hyperbolic.plabel_x += 0.1
+   # hyperbolic.rlabel_rad_offset = 5 * hyperbolic.q
+   # hyperbolic.rlabel_ang_offset = 10
+   # hyperbolic.f_arc_rad = 0.5
+   # hyperbolic.flabel_rad_offset = 0.75
+   # hyperbolic.vlabel_rad_offset *= 4
+   # hyperbolic.vlabel_ang_offset = 30 
+   # hyperbolic.impactlabel_y -= 0.2
+   # hyperbolic.focus2_label_args['xytext'] = (24,-6)
+   
+   # figwidth=10
+   # hyperbolic_fig = hyperbolic.plot(frame=0, figx=figwidth)
+   # hyperbolic_fig.savefig("hyperbolic.png", dpi=150)
