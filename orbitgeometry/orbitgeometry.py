@@ -30,8 +30,10 @@ class OrbitGeometry:
          self.omega = omega
          self.M = M
          self.sim.add_body(name="CB", Gmass=1.0, radius=0.005, rh=[0.0, 0.0, 0.0], vh=[0.0, 0.0, 0.0])
-         self.sim.add_body(a=a,e=e,capm=M,omega=omega)            
+         self.sim.add_body(a=a,e=e,capm=M,omega=omega)
+         self.sim.data = self.sim.data.xv2el()
          ic = self.sim.data.isel(time=0,name=1)
+
          self.rh = ic.rh.values
          self.vh = ic.vh.values
       elif isinstance(sim, swiftest.Simulation):
@@ -58,7 +60,7 @@ class OrbitGeometry:
          self.b = -self.a * np.sqrt(self.e**2 - 1.) # Semiminor axis of a hyperbola
          self.p = self.a * (self.e**2 - 1.) # Semilatus rectum for a hyperbola
          self.psi = 2 * np.arcsin(1.0/self.e) # Hyperbolic deflection angle
-         self.F = ic.capf.values[()]
+         self.F = np.deg2rad(ic.capf.values[()])
       else: # Parabolic trajectory
          self.p = self.h**2 / sim.G
          self.a = self.p / 2
@@ -104,10 +106,10 @@ class OrbitGeometry:
          self.yorb = self.yorb[isort]
          # Reflect each point in the orbit across the centerline
          cpoint = np.array([self.fx * np.cos(np.rad2deg(self.omega)), self.fx * np.sin(np.rad2deg(self.omega))]) # Reflection origin
-         vx = self.xorb + cpoint[0]
-         vy = self.yorb + cpoint[1]
-         self.xhyp = -vx - cpoint[0]
-         self.yhyp = -vy - cpoint[1]
+         vx = self.xorb - cpoint[0]
+         vy = self.yorb - cpoint[1]
+         self.xhyp = -vx + cpoint[0]
+         self.yhyp = -vy + cpoint[1]
 
       self.artists  = {
          'Ppoint'       : {'plotcommand'  : 'self.ax.scatter(self.P_x,self.P_y, **self.Ppoint_args, animated=False)',
@@ -678,7 +680,7 @@ class OrbitGeometry:
       if self.e < 0.99999999:
          self.E = orbit.cape.values
       elif self.e > 1.0:
-         self.F = orbit.capf.values
+         self.F = orbit.cape.values
          self.f = 360.0 - self.f
       self.x_rot = self.r * np.cos(np.deg2rad(self.f)) + self.fx
       self.y_rot = self.r * np.sin(np.deg2rad(self.f))
