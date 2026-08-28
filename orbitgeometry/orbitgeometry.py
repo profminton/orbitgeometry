@@ -907,13 +907,14 @@ class OrbitGeometry:
 
       return fig, ax, ax_rot
 
-   def plot(self, figx, frame=0):
+   def plot(self, figx, frame=0, show=True):
       """ Makes a still frame at a particular frame location (defaults to initial conditions)"""
 
       fig, self.ax, self.ax_rot = self.make_rotated_fig(figx)
 
       self.update_plot(frame)
-      plt.show()
+      if show:
+         plt.show()
 
       return fig
 
